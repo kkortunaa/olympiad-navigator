@@ -1,26 +1,27 @@
 {% extends 'base.html' %}
-{% load django_bootstrap5 %}
-
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <h1 class="text-center mb-4">Поступление в СУНЦ</h1>
-        
-        <form method="post">
-            {% csrf_token %}
-            {% if not "/delete/" in request.path %}
-                {% bootstrap_form form %}
-            {% else %}
-                <p>{{ data.surname }} {{ data.name }} {{ data.name2 }}</p>
-                <p>{{ data.phone_num }}</p>
-                <p>{{ data.email }}</p>
-            {% endif %}
-            {% bootstrap_button button_type="submit" content="Отправить заявку" %}
-        </form>
-    </div>
-</div>
-{% if form.is_valid %}
-<hr>
-<h2>Вы записаны в таблицу</h2>
+<div class="page-heading"><div><p class="eyebrow">ТВОЙ ОЛИМПИАДНЫЙ СЕЗОН</p><h1>{{ page_title }}</h1></div><span class="muted" data-today-label></span></div>
+<p class="storage-message" data-storage-message role="status" hidden></p>
+<noscript><p class="panel">Включи JavaScript, чтобы добавлять задачи и пользоваться календарём.</p></noscript>
+{% if active_page == 'home' %}
+{% if school_pending_assignments %}<section class="panel school-home-assignments"><div class="section-heading"><h2>Задания преподавателя</h2><a href="{% url 'classrooms:student_home' %}">Мой класс →</a></div>{% for receipt in school_pending_assignments %}<a class="class-link" href="{% url 'classrooms:assignment_detail' receipt.pk %}"><span><strong>{{ receipt.assignment.title }}</strong><small>{{ receipt.assignment.classroom.name }}{% if receipt.assignment.due_on %} · до {{ receipt.assignment.due_on|date:'d.m.Y' }}{% endif %}</small></span><span>↗</span></a>{% endfor %}</section>{% endif %}
+<div class="home-shortcuts"><p class="muted">Запланируй подготовку и отмечай выполненные задачи.</p><a class="text-link" href="{% url 'homepage:study' %}">Найти задания ↗</a></div>
+{% include 'includes/activity.html' %}
+{% include 'includes/todo.html' %}
 {% endif %}
+{% if active_page == 'olympiads' %}
+<nav class="section-tabs" aria-label="Разделы олимпиад"><a href="#olympiads" data-catalog-tab="catalog">Каталог</a><a href="#my-olympiads" data-catalog-tab="participation">Мои олимпиады <span class="nav-count" data-participation-count>0</span></a></nav>
+<div data-catalog-view="catalog">{% include 'includes/olympiads.html' %}</div>
+<div data-catalog-view="participation" hidden>{% include 'includes/participation.html' %}</div>
+{% endif %}
+{% if active_page == 'notifications' %}{% include 'classrooms/notices.html' %}{% if not user.is_teacher %}{% include 'includes/notifications.html' %}{% endif %}{% endif %}
+{% if active_page == 'study' %}
+<section class="panel resource-section"><p class="eyebrow">ПРАКТИКА</p><h2>Задания прошлых лет</h2><p class="muted">Архивы по конкретным профилям. На странице архива выбирай профиль, год, класс, задания и доступные решения. Источник ссылок — Олимпиада.ру; состав архивов может быть неполным.</p><div class="resource-controls"><label class="field">Поиск<input type="search" data-resource-search placeholder="Олимпиада, предмет или профиль"></label><label class="check-field"><input type="checkbox" data-resources-mine> Только мои олимпиады</label></div><p class="muted" data-resource-count role="status"></p><div data-resource-list class="resource-list"></div><p data-resource-empty class="empty-state" hidden>Подходящих архивов не найдено. Для остальных профилей проверь материалы на сайте организатора.</p><button type="button" data-resources-more hidden>Показать ещё</button></section>
+<section class="panel"><p class="eyebrow">НЕБОЛЬШИЕ ШАГИ</p><h2>Подготовка в твоём темпе</h2><p class="muted">Выбери занятие и добавь задачу подготовки на сегодня.</p><div class="study-list">
+    <article><div><h3>Перестановки и сочетания</h3><p>Повторить основные идеи · 15 минут</p></div><button type="button" data-study="Повторить перестановки и сочетания">На сегодня</button></article>
+    <article><div><h3>Комбинаторика</h3><p>Решить 5 задач · 25 минут</p></div><button type="button" data-study="Решить 5 задач по комбинаторике">На сегодня</button></article>
+    <article><div><h3>Разбор прошлых заданий</h3><p>Разобрать решения и ошибки · 30 минут</p></div><button type="button" data-study="Разобрать задания прошлых лет">На сегодня</button></article>
+</div><a class="text-link" href="{% url 'homepage:homepage' %}#tasks">Открыть задачи →</a></section>
+{% endif %}
+<p class="feedback" data-feedback role="status" aria-live="polite"></p>
 {% endblock %}

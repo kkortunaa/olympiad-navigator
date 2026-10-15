@@ -1,0 +1,11 @@
+<section class="panel todo" id="tasks" aria-labelledby="tasks-heading">
+    <div class="section-heading"><div><p class="eyebrow" data-selected-label></p><h2 id="tasks-heading">Мои задачи</h2></div><span class="pill" data-task-count aria-live="polite">0 / 0</span></div>
+    <div class="task-datebar"><button type="button" data-task-all-dates aria-pressed="false">Все даты</button><div class="task-day-controls"><button type="button" data-day-prev aria-label="Предыдущий день">←</button><label class="visually-hidden" for="task-day">День задач</label><input id="task-day" type="date"><button type="button" data-day-next aria-label="Следующий день">→</button><button type="button" data-day-today>Сегодня</button></div></div>
+    <form id="task-form" class="task-form">
+        <label class="field">Задача<input id="task-title" name="title" placeholder="Что хочешь сделать?" maxlength="180" required></label>
+        <div class="form-bottom"><label class="field">Дата<input id="task-date" name="date" type="date" required></label><button class="primary" type="submit" id="task-submit">Добавить</button><button type="button" id="task-cancel" hidden>Отмена</button></div>
+    </form>
+    <div class="filters" role="group" aria-label="Фильтр задач"><button type="button" data-task-filter="all" aria-pressed="true">Все</button><button type="button" data-task-filter="active" aria-pressed="false">В работе</button><button type="button" data-task-filter="done" aria-pressed="false">Готово</button></div>
+    <ul class="task-list" id="task-list"></ul><p class="empty-state" id="task-empty" hidden></p>
+    <div class="todo-bottom"><span class="muted" data-task-message aria-live="polite"></span><button type="button" id="clear-done">Удалить выполненные</button></div>
+</section>

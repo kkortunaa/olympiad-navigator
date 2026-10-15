@@ -1,20 +1,38 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}СУНЦ{% endblock %}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>{% block title %}{{ page_title|default:"Главная" }} — Олимпиадный навигатор{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'navigator/site.css' %}?v=20261013-2">
+    <link id="dark-theme" rel="stylesheet" href="{% static 'navigator/midnight.css' %}?v=20261015">
+    <script>try { if(localStorage.getItem('navigator-theme')==='light'){document.documentElement.dataset.theme='light';document.getElementById('dark-theme').disabled=true;} } catch(e) {}</script>
+    <link rel="stylesheet" href="{% static 'navigator/light.css' %}?v=20261015">
+    <link rel="stylesheet" href="{% static 'navigator/school.css' %}?v=20261015">
+    <script src="{% static 'navigator/theme.js' %}?v=20261015" defer></script>
+    <script src="{% static 'navigator/activity-data.js' %}?v=20261013-2" defer></script>
+    <script src="{% static 'navigator/site.js' %}?v=20261015" defer></script>
+    <script src="{% static 'navigator/planner.js' %}?v=20261015" defer></script>
+    <script src="{% static 'navigator/interface.js' %}?v=20261015" defer></script>
+    <script src="{% static 'navigator/school.js' %}?v=20261015" defer></script>
 </head>
 <body>
     {% include 'header.html' %}
-    
-    <main class="container mt-4">
-        {% block content %}
-        {% endblock %}
+    <main class="container page" id="main-content">
+        {% for message in messages %}<p class="panel" role="status">{{ message }}</p>{% endfor %}
+        <div class="storage-message" data-sync-error hidden role="alert"><span data-sync-error-text></span><div class="detail-actions"><button type="button" data-retry-sync>Повторить сохранение</button><button type="button" data-export-plan>Скачать мои изменения</button><button type="button" data-reload-workspace>Загрузить данные из аккаунта</button></div></div>
+        <p class="sync-line" data-sync-status role="status" {% if user.is_teacher %}hidden{% endif %}>{% if user.is_authenticated %}Изменения сохраняются в аккаунте.{% else %}Гостевой режим · данные в этом браузере. <a href="{% url 'planner:login' %}">Войти</a> или <a href="{% url 'planner:signup' %}">создать аккаунт</a> для синхронизации.{% endif %}</p>
+        <a class="conflict-banner" href="{% url 'homepage:olympiads' %}#conflicts" data-conflict-banner hidden></a>
+        {% block content %}{% endblock %}
     </main>
-
     {% include 'footer.html' %}
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {{ catalog_names|json_script:'catalog-names' }}
+    {{ catalog_aliases|json_script:'catalog-aliases' }}
+    {% if catalog_metadata %}{{ catalog_metadata|json_script:'catalog-metadata' }}{% endif %}
+    {{ personal_bootstrap|json_script:'personal-bootstrap' }}
+    {{ planner_catalog|json_script:'planner-catalog' }}
+    {{ school_bootstrap|json_script:'school-bootstrap' }}
+    <div hidden data-csrf>{% csrf_token %}</div>
 </body>
 </html>

@@ -1,57 +1,28 @@
-from django.core.paginator import Paginator
-from django.shortcuts import render, get_object_or_404, redirect
-from django.db.models import Q
-from homepage.models import User
-from datetime import datetime
-from .forms import UserForm
+from django.shortcuts import redirect, render
+from olympiads.views import catalog_context
+
 
 def homepage(request):
-    form = UserForm(request.POST or None)
-    if request.method == 'POST' and form.is_valid():
-        form.save()
-        
+    if request.user.is_authenticated and request.user.is_teacher:
+        return redirect('classrooms:teacher_home')
+    return render(request, 'homepage/homepage.html', {'active_page': 'home', 'page_title': 'Твоя подготовка'})
 
-    context = {
-        'form': form
-    }
-    
-    return render(request, "homepage/homepage.html", context)
 
-def fix_query_set(request):
-    profiles = User.objects.values_list('profile')
-    context = {'my_objects': profiles}
-    return render(request, 'homepage.html', context)
+def olympiads(request):
+    return render(request, 'homepage/homepage.html', {'active_page': 'olympiads', 'page_title': 'Олимпиады', **catalog_context()})
+
+
+def plan(request):
+    return redirect('homepage:homepage', permanent=True)
+
+
+def study(request):
+    return render(request, 'homepage/homepage.html', {'active_page': 'study', 'page_title': 'Подготовка'})
+
+
+def notifications(request):
+    return render(request, 'homepage/homepage.html', {'active_page': 'notifications', 'page_title': 'Уведомления'})
+
 
 def scuns_list(request):
-    sort_by = request.GET.get('sort', 'surname')
-    allowed_sorts = ['surname', 'name', 'name2', 'avg_oge_score', "avg_score", "avg_score_of_exam"]
-    if sort_by not in allowed_sorts:
-        sort_by = 'surname'
-    users = User.objects.order_by(sort_by)
-    paginator = Paginator(users, 5)
-
-    page_num = request.GET.get("page")
-    page_obj = paginator.get_page(page_num)
-
-    context = {
-    'page_obj': page_obj, 
-    'current_sort': sort_by,
-    'allowed_sorts': allowed_sorts,
-    }
-    return render(request, 'homepage/scuns_list.html', context)
-
-def delete_user(request, pk):
-    # Получаем объект модели или выбрасываем 404 ошибку.
-    instance = get_object_or_404(User, pk=pk)
-    # В форму передаём только объект модели;
-    # передавать в форму параметры запроса не нужно.
-    form = UserForm(instance=instance)
-    context = {'form': form}
-    # Если был получен POST-запрос...
-    if request.method == 'POST':
-        # ...удаляем объект:
-        instance.delete()
-        # ...и переадресовываем пользователя на страницу со списком записей.
-        return redirect('homepage:list')
-    # Если был получен GET-запрос — отображаем форму.
-    return render(request, 'homepage/homepage.html', context)
+    return plan(request)

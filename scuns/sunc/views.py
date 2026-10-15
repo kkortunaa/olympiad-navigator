@@ -1,5 +1,5 @@
-from django.shortcuts import render
+from homepage.views import plan
 
 
 def sunc(request):
-    return render(request, 'sunc/index.html')
+    return plan(request)

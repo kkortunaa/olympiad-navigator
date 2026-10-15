@@ -1,0 +1,34 @@
+<section class="recommendations" id="olympiads" data-today="{{ catalog_today }}" data-page-size="{% if active_page == 'home' %}6{% else %}12{% endif %}" aria-labelledby="olympiads-heading">
+    <div class="section-heading"><div><p class="eyebrow">ПЕРЕЧЕНЬ РСОШ · {{ catalog_season }}</p><h2 id="olympiads-heading">Найди свою олимпиаду</h2></div><span class="muted" data-results-count role="status" aria-live="polite"></span></div>
+    <div class="catalog-filter-panel">
+        <div class="catalog-primary-controls"><label class="field catalog-search">Поиск<input type="search" id="olympiad-search" placeholder="Название олимпиады или направление"></label>
+        {% include 'includes/picker.html' with id='subject-filter' label='Предмет' default_label='Все предметы' options=subject_choices searchable=True all_option=True %}
+        {% include 'includes/picker.html' with id='registration-sort' label='Порядок' default_label='Ближайшее окончание регистрации' default_value='registration-asc' options=sort_choices %}</div>
+        <div class="registration-filter"><span class="control-caption">Регистрация</span><input type="hidden" id="registration-status" value="all"><div class="filters" role="group" aria-label="Статус регистрации"><button type="button" data-registration="all" aria-pressed="true">Любая</button><button type="button" data-registration="active" aria-pressed="false">Открыта</button><button type="button" data-registration="upcoming" aria-pressed="false">Скоро</button><button type="button" data-registration="closed" aria-pressed="false">Завершена</button><button type="button" data-registration="unknown" aria-pressed="false">Уточняются</button></div></div>
+        <div class="catalog-secondary-controls"><details class="profile-refinement"><summary>Уточнить профиль <span data-profile-caption></span></summary><p class="muted">Предмет — школьная область, например информатика. Профиль — направление конкретной олимпиады, например компьютерная безопасность. Иногда названия совпадают. Для общего поиска достаточно предмета.</p>{% include 'includes/picker.html' with id='profile-filter' label='Профиль олимпиады' default_label='Все профили' options=profile_choices searchable=True all_option=True %}</details><button type="button" data-only-favorites aria-pressed="false">☆ Избранное</button><button type="button" id="reset-filters" hidden>Сбросить</button></div>
+    </div>
+    <p class="muted catalog-filter-note">Открытие и окончание регистрации указаны отдельно. Завершённые периоды и неизвестные сроки — в конце сортировки по датам.</p>
+    <div class="olympiad-grid">
+    {% for olympiad in catalog %}
+        <article class="panel olympiad-card" data-card="{{ olympiad.plan_key }}" data-card-subject="{% if olympiad.has_math %}math {% endif %}{% if olympiad.has_code %}code{% endif %}">
+            <div class="card-top"><div class="card-identity"><span class="subject-mark {% if olympiad.has_math %}subject-math{% elif olympiad.has_code %}subject-code{% else %}subject-general{% endif %}" aria-hidden="true">{% if olympiad.has_math %}<svg viewBox="0 0 24 24"><path d="M18 4H6l7 8-7 8h12M18 4v3M18 17v3"/></svg>{% elif olympiad.has_code %}<svg viewBox="0 0 24 24"><path d="m7 6-5 6 5 6m10-12 5 6-5 6m-3-15-4 18"/></svg>{% else %}<svg viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/></svg>{% endif %}</span><span class="pill">№ {{ olympiad.catalog_number }} в перечне</span></div><button type="button" data-save="{{ olympiad.plan_key }}" aria-label="Сохранить {{ olympiad.name }} в избранное" aria-pressed="false">☆</button></div>
+            <h3><a href="{% url 'olympiad_detail' olympiad.pk %}" title="{{ olympiad.name }}" aria-label="{{ olympiad.name }}">{% if 'Высшая проба' in olympiad.name %}Высшая проба{% elif 'Ломоносов' in olympiad.name %}Ломоносов{% elif 'Технокубок' in olympiad.name or 'ТехноКубок' in olympiad.name %}Технокубок{% else %}{{ olympiad.name }}{% endif %}</a></h3>
+            {% if 'Высшая проба' in olympiad.name %}<p class="muted card-organizer">НИУ ВШЭ</p>{% elif 'Ломоносов' in olympiad.name %}<p class="muted card-organizer">МГУ имени М. В. Ломоносова</p>{% endif %}
+            <p class="muted card-profiles"><strong>Профили:</strong> {{ olympiad.subjects|join:', ' }}</p>
+            <p class="card-matched-profiles" data-matched-profiles hidden></p>
+            <div class="card-schedule">
+                <div class="registration-summary" data-registration-label><span class="muted">Даты регистрации — в расписании олимпиады</span></div>
+                {% if olympiad.sync_error %}<p class="data-warning">Обновление неполное: показаны сохранённые даты</p>{% endif %}
+                {% if olympiad.last_success_at %}<p class="muted">Расписание проверено {{ olympiad.last_success_at|date:'d.m.Y H:i' }} МСК</p>{% elif olympiad.sync_error %}<p class="muted">Расписание временно недоступно</p>{% else %}<p class="muted">Расписание загружается</p>{% endif %}
+                <a class="text-link" href="{% url 'olympiad_detail' olympiad.pk %}">Даты туров и регистрации →</a>
+                <p><a class="text-link" href="{% url 'olympiad_detail' olympiad.pk %}#profiles">Профили и задания →</a></p>
+            </div>
+            {% if olympiad.registration_url %}<a class="button primary" href="{{ olympiad.registration_url }}" target="_blank" rel="noopener noreferrer">Зарегистрироваться ↗</a>{% elif olympiad.official_url %}<a class="button" href="{{ olympiad.official_url }}" target="_blank" rel="noopener noreferrer">Регистрация у организатора ↗</a>{% endif %}
+            {% if not user.is_teacher %}<button class="plan-button" type="button" data-olympiad="{{ olympiad.plan_key }}" aria-pressed="false">Задача подготовки</button>{% endif %}
+        </article>
+    {% empty %}<div class="panel"><h3>Каталог пока пуст</h3><p>Олимпиады появятся после первого обновления данных.</p></div>{% endfor %}
+    </div>
+    <button type="button" class="load-more" id="load-more">Показать ещё</button>
+    <div class="panel empty-state" id="olympiad-empty" hidden><p>Ничего не найдено. Попробуй другой предмет или название.</p><button type="button" id="reset-search">Сбросить поиск</button></div>
+    <p class="muted example-note">Состав перечня: <a href="https://rsr-olymp.ru/" target="_blank" rel="noopener noreferrer">РСОШ</a>. Расписание: <a href="https://olimpiada.ru/" target="_blank" rel="noopener noreferrer">Олимпиада.ру</a>. {% if catalog_run %}Последняя проверка {{ catalog_run.finished_at|date:'d.m.Y H:i' }} МСК.{% endif %}</p>
+</section>

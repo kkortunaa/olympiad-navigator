@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="panel auth-panel"><p class="eyebrow">{% if auth_teacher %}КАБИНЕТ ПРЕПОДАВАТЕЛЯ{% else %}ТВОЙ ЛИЧНЫЙ ПЛАН{% endif %}</p><h1>{{ page_title }}</h1>
+{% if not password_change %}<nav class="auth-roles" aria-label="Тип аккаунта"><a {% if not auth_teacher %}aria-current="page"{% endif %} href="{% if signup %}{% url 'planner:signup' %}{% else %}{% url 'planner:login' %}{% endif %}">Ученик</a><a {% if auth_teacher %}aria-current="page"{% endif %} href="{% if signup %}{% url 'planner:teacher_signup' %}{% else %}{% url 'planner:teacher_login' %}{% endif %}">Учитель</a></nav>
+<p class="muted">{% if auth_teacher %}Создавайте классы, отправляйте задания и следите за олимпиадными сроками учеников.{% else %}Задачи, активность и избранное сохранятся в аккаунте и будут доступны на других устройствах.{% endif %}</p>{% endif %}
+<form method="post" class="account-form">{% csrf_token %}{% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}{{ form.as_p }}<button class="primary" type="submit">{% if signup %}Создать аккаунт{% elif password_change %}Сохранить пароль{% else %}Войти{% endif %}</button></form>
+{% if not password_change %}<p class="muted">{% if signup %}Уже есть аккаунт? <a href="{% if auth_teacher %}{% url 'planner:teacher_login' %}{% else %}{% url 'planner:login' %}{% endif %}">Войти</a>{% else %}Первый раз здесь? <a href="{% if auth_teacher %}{% url 'planner:teacher_signup' %}{% else %}{% url 'planner:signup' %}{% endif %}">Создать аккаунт</a>{% endif %}</p>{% endif %}
+<a class="text-link" href="{% url 'homepage:olympiads' %}">Вернуться к олимпиадам →</a></section>
+{% endblock %}

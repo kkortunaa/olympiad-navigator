@@ -1,0 +1,9 @@
+<div class="picker" data-picker data-label="{{ label }}">
+    <span class="control-caption">{{ label }}</span><input type="hidden" id="{{ id }}" value="{{ default_value|default:'all' }}">
+    <button type="button" class="picker-trigger" role="combobox" aria-label="{{ label }}" aria-haspopup="listbox" aria-expanded="false" aria-controls="{{ id }}-options"><span data-picker-label>{{ default_label }}</span><span aria-hidden="true">⌄</span></button>
+    <div class="picker-popup" hidden>{% if searchable %}<label class="visually-hidden" for="{{ id }}-search">Поиск: {{ label }}</label><input id="{{ id }}-search" type="search" data-picker-search placeholder="Начни вводить название" autocomplete="off">{% endif %}
+    <div id="{{ id }}-options" role="listbox" aria-label="{{ label }}" class="picker-options">
+        {% if all_option %}<button id="{{ id }}-all" type="button" role="option" aria-selected="true" data-value="all" tabindex="-1">{{ default_label }}</button>{% endif %}
+        {% for option in options %}<button id="{{ id }}-{{ forloop.counter }}" type="button" role="option" aria-selected="false" data-value="{{ option.value }}" tabindex="-1">{{ option.label }}</button>{% endfor %}
+    </div><p class="muted picker-empty" hidden>Ничего не найдено</p></div>
+</div>

@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class="panel"><h1>Новое задание · {{ classroom.name }}</h1><form method="post" class="account-form">{% csrf_token %}{{ form.as_p }}<button class="primary">Отправить задание</button></form><a href="{% url 'classrooms:teacher_class' classroom.pk %}">Вернуться к классу →</a></section>{% endblock %}

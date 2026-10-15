@@ -1,24 +1,22 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-    <div class="container">
-        <a class="navbar-brand" href="/">СУНЦ</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav">
-                <li class="nav-item">
-                    <a class="nav-link" href="/">Главная</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/sunc/">Поступление</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/list/">Список поступающих</a>  <!-- изменить на /list/ -->
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/about/">О нас</a>
-                </li>
-            </ul>
-        </div>
+<a class="skip-link" href="#main-content">К содержимому</a>
+<header class="site-header">
+    <div class="container header-inner">
+        <a class="brand" href="{% url 'homepage:homepage' %}"><span class="brand-mark" aria-hidden="true">↗</span><span>Олимпиадный навигатор<small>от интереса к достижению</small></span></a>
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Включить светлую тему" aria-pressed="false"><span data-theme-icon aria-hidden="true">☀</span><span class="theme-caption" data-theme-label>Светлая тема</span></button>
+        <button class="menu-toggle" type="button" aria-controls="main-nav" aria-expanded="false">Меню</button>
+        <nav id="main-nav" class="main-nav" aria-label="Основная навигация">
+            {% if user.is_teacher %}
+            <a href="{% url 'classrooms:teacher_home' %}" {% if active_page == 'classes' %}aria-current="page"{% endif %}>Классы</a>
+            <a href="{% url 'classrooms:teacher_calendar' %}" {% if active_page == 'class_calendar' %}aria-current="page"{% endif %}>Календарь</a>
+            <a href="{% url 'classrooms:variants' %}" {% if active_page == 'variants' %}aria-current="page"{% endif %}>Варианты</a>
+            {% else %}
+            <a href="{% url 'homepage:homepage' %}" {% if active_page == 'home' %}aria-current="page"{% endif %}>Главная</a>
+            {% if user.is_authenticated %}<a href="{% url 'classrooms:student_home' %}" {% if active_page == 'classes' %}aria-current="page"{% endif %}>Мой класс</a>{% endif %}
+            {% endif %}
+            <a href="{% url 'homepage:olympiads' %}" {% if active_page == 'olympiads' %}aria-current="page"{% endif %}>Олимпиады</a>
+            {% if not user.is_teacher %}<a href="{% url 'homepage:study' %}" {% if active_page == 'study' %}aria-current="page"{% endif %}>Подготовка</a>{% endif %}
+            <a href="{% url 'homepage:notifications' %}" {% if active_page == 'notifications' %}aria-current="page"{% endif %} aria-label="Уведомления">Уведомления <span class="nav-count" data-notification-count>0</span></a>
+            <a href="{% if user.is_authenticated %}{% url 'planner:account' %}{% else %}{% url 'planner:login' %}{% endif %}" {% if active_page == 'account' %}aria-current="page"{% endif %}>{% if user.is_authenticated %}Кабинет{% else %}Войти{% endif %}</a>
+        </nav>
     </div>
-</nav>
+</header>

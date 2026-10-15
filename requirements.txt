@@ -1,0 +1,5 @@
+Django==3.2.16
+django-bootstrap5==22.2
+Pillow==9.4.0
+selenium>=4.20,<5
+beautifulsoup4>=4.12,<5

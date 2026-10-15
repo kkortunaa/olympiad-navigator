@@ -205,3 +205,20 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Selenium and scraper snapshots
+.selenium-cache/
+.scraper-cache/
+.dev-secret
+
+.backups/
+
+# Local presentation outputs and generated scraper reports
+/presentation/*.png
+/presentation/*.jpg
+/presentation/site-url.txt
+/catalog-refresh-*.json
+/registration-*.json
+/venue-*.json
+# Unused nested Django scaffold
+/scuns/scuns/pepepepepepe/

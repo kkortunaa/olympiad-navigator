@@ -1,0 +1,5 @@
+{% extends 'base.html' %}{% block content %}
+<div class="page-heading"><div><p class="eyebrow">КАБИНЕТ ПРЕПОДАВАТЕЛЯ</p><h1>Мои классы</h1><p class="muted">Ученики, задания и олимпиадные сроки — в одном месте.</p></div><a class="button" href="{% url 'classrooms:teacher_calendar' %}">Общий календарь →</a></div>
+<div class="school-grid"><section class="panel"><h2>Ваши классы</h2><div class="school-list">{% for cls in classes %}<a class="class-link" href="{% url 'classrooms:teacher_class' cls.pk %}"><span><strong>{{ cls.name }}</strong><small>{{ cls.student_count }} учеников</small></span><span aria-hidden="true">↗</span></a>{% empty %}<div class="empty-state"><h3>Начните с первого класса</h3><p>Создайте группу, затем пригласите учеников по логину или передайте им код класса.</p></div>{% endfor %}</div></section>
+<section class="panel"><h2>Создать класс</h2><form method="post" class="account-form">{% csrf_token %}{{ form.as_p }}<button class="primary" type="submit">Создать класс</button></form><p class="muted">Можно вести несколько классов или отдельных олимпиадных групп.</p></section></div>
+{% endblock %}
