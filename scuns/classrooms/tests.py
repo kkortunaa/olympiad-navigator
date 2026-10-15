@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from olympiads.models import Olympiad, OlympiadEvent, OlympiadProfile
 from planner.models import Workspace, empty_workspace
-from .models import (Assignment, AssignmentReceipt, ChatMessage, Classroom, Invitation, Membership,
+from .models import (Assignment, AssignmentReceipt, ChatMessage, ClassChatMessage, Classroom, Invitation, Membership,
                      SchoolNotice, StudentRegistration, VariantDraft)
 from .services import calendar_context, progress
 
@@ -321,3 +321,99 @@ class SchoolTests(TestCase):
         response=self.student_client.post(self.url('chat',self.member.pk),{'text':'Через форму'})
         self.assertContains(response,'Слишком много сообщений')
         self.assertEqual(ChatMessage.objects.count(),30)
+
+    def test_group_chat_is_shared_and_not_a_private_broadcast(self):
+        path = self.url('group_chat_api', self.classroom.pk)
+        self.assertEqual(self.teacher_client.post(path, {'text': 'Обсуждение для всех'}).status_code, 200)
+        for client in (self.student_client, self.peer_client):
+            self.assertEqual(client.get(path).json()['messages'][0]['text'], 'Обсуждение для всех')
+        self.peer_client.post(path, {'text': 'Ответ ученика'})
+        self.assertEqual(len(self.student_client.get(path).json()['messages']), 2)
+        self.assertEqual(ClassChatMessage.objects.count(), 2)
+        self.assertEqual(ChatMessage.objects.count(), 0)
+        self.assertEqual(SchoolNotice.objects.filter(kind='group_message', recipient=self.student).count(), 2)
+        self.assertEqual(SchoolNotice.objects.filter(kind='group_message', recipient=self.teacher).count(), 1)
+        self.assertContains(self.teacher_client.get(self.url('teacher_class', self.classroom.pk)), 'Общий чат')
+        self.assertContains(self.student_client.get(self.url('student_class', self.classroom.pk)), 'Общий чат')
+
+    def test_group_chat_rejects_outsiders_and_revokes_removed_members(self):
+        path = self.url('group_chat_api', self.classroom.pk)
+        self.assertEqual(Client().get(path).status_code, 401)
+        outsider = Client(); outsider.force_login(self.other)
+        for client in (outsider, self.stranger_client):
+            self.assertEqual(client.get(path).status_code, 403)
+            self.assertEqual(client.post(path, {'text': 'Нет доступа'}).status_code, 403)
+        self.teacher_client.post(path, {'text': 'История класса'})
+        self.member.is_active = False; self.member.save()
+        self.assertEqual(self.student_client.get(path).status_code, 403)
+        self.assertEqual(self.student_client.get(self.url('group_chat', self.classroom.pk)).status_code, 403)
+        self.assertEqual(self.student_client.get('/class/notices/').json()['unread'], 0)
+        self.assertEqual(ClassChatMessage.objects.count(), 1)
+
+    def test_group_chat_notice_read_is_scoped_and_keeps_newer_unread(self):
+        path = self.url('group_chat_api', self.classroom.pk)
+        self.teacher_client.post(path, {'text': 'Первое'})
+        first = ClassChatMessage.objects.get()
+        self.teacher_client.post(path, {'text': 'Второе'})
+        self.teacher_client.post(self.url('chat_api', self.member.pk), {'text': 'Личное'})
+        self.student_client.post('/class/notices/read/', {'classroom': self.classroom.pk, 'through': first.pk})
+        self.assertEqual(SchoolNotice.objects.filter(recipient=self.student, kind='group_message', read_at__isnull=True).count(), 1)
+        self.assertEqual(SchoolNotice.objects.filter(recipient=self.student, kind='message', read_at__isnull=True).count(), 1)
+        self.assertEqual(SchoolNotice.objects.filter(recipient=self.peer, read_at__isnull=True).count(), 2)
+        self.assertEqual(self.student_client.post('/class/notices/read/', {'classroom': self.foreign.pk, 'through': first.pk}).status_code, 403)
+        self.assertEqual(self.student_client.post('/class/notices/read/', {'classroom': self.classroom.pk, 'through': 999999}).status_code, 404)
+
+    def test_group_chat_escaping_pagination_csrf_and_message_limits(self):
+        path = self.url('group_chat_api', self.classroom.pk)
+        self.assertEqual(self.student_client.post(path, {'text': '  '}).status_code, 400)
+        self.assertEqual(self.student_client.post(path, {'text': 'x' * 4001}).status_code, 400)
+        self.assertEqual(Client(enforce_csrf_checks=True).post(path, {'text': 'Без токена'}).status_code, 403)
+        self.teacher_client.post(path, {'text': '<script>bad()</script>'})
+        self.assertContains(self.student_client.get(self.url('group_chat', self.classroom.pk)), '&lt;script&gt;bad()&lt;/script&gt;')
+        ClassChatMessage.objects.bulk_create([ClassChatMessage(classroom=self.classroom, sender=self.teacher, text=str(i)) for i in range(105)])
+        data = self.peer_client.get(path).json()
+        self.assertEqual(len(data['messages']), 100); self.assertTrue(data['has_more'])
+        remaining = self.peer_client.get(path + '?after=' + str(data['messages'][-1]['id'])).json()
+        self.assertEqual(len(remaining['messages']), 6)
+        self.assertEqual(self.peer_client.get(path + '?after=invalid').status_code, 400)
+        page = self.peer_client.get(self.url('group_chat', self.classroom.pk))
+        self.assertEqual(len(page.context['chat_messages']), 100)
+        self.assertIsNotNone(page.context['older'])
+        for _ in range(30):
+            self.assertEqual(self.peer_client.post(path, {'text': 'Сообщение'}).status_code, 200)
+        self.assertEqual(self.peer_client.post(path, {'text': 'Лимит'}).status_code, 429)
+        self.assertContains(self.peer_client.post(self.url('group_chat', self.classroom.pk), {'text': 'Лимит'}), 'Слишком много сообщений')
+
+    def test_calendar_includes_favorites_and_task_olympiads_without_registration(self):
+        state = empty_workspace()
+        state['favorites'] = [self.olympiad.plan_key]
+        state['tasks'] = [{'id': 'prep', 'title': 'Подготовка', 'source': self.second.plan_key}]
+        Workspace.objects.create(user=self.student, state=state)
+        self.assertEqual(StudentRegistration.objects.count(), 0)
+        data = self.calendar()['calendar_data']['2026-10-21']
+        self.assertEqual(len(data['events']), 2)
+        self.assertFalse(data['events'][0]['students'][0]['registered'])
+        self.assertEqual(len(data['conflicts']), 1)
+        registered = calendar_context([self.classroom], {'year': '2026', 'month': '10', 'scope': 'registered'})
+        self.assertFalse(registered['calendar_has_entries'])
+        self.member.is_active = False; self.member.save()
+        self.assertFalse(self.calendar()['calendar_has_entries'])
+
+    def test_calendar_catalog_mode_works_without_members_or_fake_conflicts(self):
+        data = calendar_context([], {'year': '2026', 'month': '10', 'scope': 'catalog'})
+        self.assertEqual(len(data['calendar_data']['2026-10-21']['events']), 2)
+        self.assertEqual(data['calendar_data']['2026-10-21']['events'][0]['students'], [])
+        self.assertEqual(data['calendar_data']['2026-10-21']['conflicts'], [])
+        self.assertIn(data['calendar_initial'], ['2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23'])
+        self.assertIn('scope=catalog', data['next_month'])
+
+    def test_calendar_published_titles_and_registered_labels_survive_plan_merge(self):
+        state = empty_workspace(); state['favorites'] = [self.olympiad.plan_key]
+        Workspace.objects.create(user=self.student, state=state)
+        StudentRegistration.objects.create(student=self.student, profile=self.profile)
+        event = self.calendar()['calendar_data']['2026-10-20']['events'][0]
+        self.assertTrue(event['students'][0]['registered'])
+        response = self.teacher_client.get('/teacher/calendar/?year=2026&month=10&scope=students')
+        self.assertContains(response, 'calendar-preview')
+        self.assertContains(response, 'Олимпиада А')
+        self.assertContains(response, '2026-10-20')

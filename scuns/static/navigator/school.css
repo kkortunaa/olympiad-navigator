@@ -15,3 +15,6 @@ textarea{resize:vertical;min-height:95px}textarea:focus-visible{outline:2px soli
 .school-student-search{max-width:340px;margin:16px 0}.school-student-search input{width:100%}
 @media(max-width:1120px){.main-nav{order:5}.theme-toggle{margin-left:auto}}
 @media(max-width:360px){.brand{font-size:11px}.brand small{font-size:8px}.brand-mark{width:27px;height:30px}.theme-toggle{min-width:32px;padding:6px}.header-inner{gap:6px}}
+
+.school-day .calendar-preview{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3;font-size:10px;overflow-wrap:anywhere;margin:5px 0}.school-day{min-height:98px}.calendar-filter{flex-wrap:wrap}.calendar-filter select{width:100%;min-height:44px;background:var(--control);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px}.calendar-filter .field{min-width:180px}
+@media(max-width:600px){.school-day{min-height:82px}.school-day .calendar-preview{font-size:9px}.calendar-filter .field{min-width:140px}.school-day small{font-size:10px}}

@@ -25,6 +25,8 @@ urlpatterns = [
     path('class/assignments/<int:pk>/answer/', views.answer, name='answer'),
     path('class/chat/<int:pk>/', views.chat, name='chat'),
     path('class/chat/<int:pk>/messages/', views.chat_api, name='chat_api'),
+    path('class/<int:pk>/chat/', views.group_chat, name='group_chat'),
+    path('class/<int:pk>/chat/messages/', views.group_chat_api, name='group_chat_api'),
     path('class/notices/', views.notices_api, name='notices_api'),
     path('class/notices/read/', views.notice_read, name='notice_read'),
 ]

@@ -52,7 +52,7 @@
     const log=$('[data-chat-log]'),form=$('[data-chat-form]'),status=$('[data-chat-status]');
     let last=Math.max(0,...$$('[data-message-id]').map(n=>Number(n.dataset.messageId))), busy=false;
     const historical=chat.dataset.chatHistory==='true';
-    const draftKey=`school-chat-draft:${bootstrap.user}:${chat.dataset.membership}`;
+    const draftKey=`school-chat-draft:${bootstrap.user}:${chat.dataset.classroom ? "class:"+chat.dataset.classroom : "private:"+chat.dataset.membership}`;
     const input=form.querySelector('textarea');
     try{if(!input.value)input.value=sessionStorage.getItem(draftKey)||'';}catch(_){}
     input.addEventListener('input',()=>{try{sessionStorage.setItem(draftKey,input.value);}catch(_){}});
@@ -71,7 +71,7 @@
           row.append(meta,make('p',m.text));log.append(row);last=Math.max(last,m.id);
         });
         if(nearBottom)log.scrollTop=log.scrollHeight;
-        if(!data.has_more){await post('/class/notices/read/',{membership:chat.dataset.membership});refreshNotices();}
+        if(!data.has_more&&last){await post('/class/notices/read/',chat.dataset.classroom ? {classroom:chat.dataset.classroom,through:last} : {membership:chat.dataset.membership});refreshNotices();}
         else setTimeout(poll,0);
         status.textContent='Сообщения обновляются, пока страница открыта.';
       }catch(e){status.textContent=e.message+' Сообщения сохранены на сервере; обновление повторится автоматически.';}
@@ -97,13 +97,13 @@
       $('[data-calendar-title]').textContent=new Date(`${day}T12:00:00`).toLocaleDateString('ru',{day:'numeric',month:'long',year:'numeric'});
       const warnings=$('[data-calendar-conflicts]'),events=$('[data-calendar-events]');warnings.replaceChildren();events.replaceChildren();
       item.conflicts.forEach(c=>{const box=make('div',undefined,'school-warning');box.append(make('strong','Пересечение дат'),make('p',`${c.left} и ${c.right}. Ученики: ${c.students.join(', ')}. Уточните время туров.`));warnings.append(box);});
-      if(!item.events.length)events.append(make('p','На эту дату нет известных туров по регистрациям учеников.','empty-state'));
+      if(!item.events.length)events.append(make('p','На эту дату нет известных туров для выбранных олимпиад.','empty-state'));
       item.events.forEach(e=>{
         const article=make('article');article.append(make('h3',e.olympiad),make('p',`${e.name}${e.profiles.length?' · '+e.profiles.join(', '):''}`));
         article.append(make('p',`${e.start.split('-').reverse().join('.')} — ${e.end.split('-').reverse().join('.')}`,'muted'));
         if(e.incomplete)article.append(make('p','Одна из границ периода не опубликована. На календаре отмечена только известная дата.','muted'));
         if(e.format||e.venue)article.append(make('p',[e.format,e.venue].filter(Boolean).join(' · '),'muted'));
-        const students=make('ul');e.students.forEach(s=>{const li=make('li');li.append(link(s.name,s.url),make('span',` · ${s.class_name}`));students.append(li);});article.append(students,link('Расписание и источники →',e.url+'#schedule'));events.append(article);
+        const students=make('ul');e.students.forEach(s=>{const li=make('li');li.append(link(s.name,s.url),make('span',` · ${s.class_name} · ${s.registered ? "Регистрация отмечена учеником" : "В планах"}`));students.append(li);});article.append(students,link('Расписание и источники →',e.url+'#schedule'));events.append(article);
       });
     }
     $$('[data-calendar-day]').forEach(button=>button.addEventListener('click',()=>select(button.dataset.calendarDay)));

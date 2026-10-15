@@ -6,16 +6,16 @@ from django.db.models import Count, Q
 from django.urls import reverse
 from django.utils import timezone
 
-from olympiads.models import OlympiadEvent
+from olympiads.models import Olympiad, OlympiadEvent
 from planner.models import Workspace
 from .models import AssignmentReceipt, SchoolNotice, StudentRegistration
 
 MONTHS = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь']
 
 
-def notice(user, classroom, title, text, url, kind, membership=None):
+def notice(user, classroom, title, text, url, kind, membership=None, group_message=None):
     return SchoolNotice.objects.create(recipient=user, classroom=classroom, membership=membership,
-                                       title=title[:180], text=text[:500], url=url, kind=kind)
+                                       title=title[:180], text=text[:500], url=url, kind=kind, group_message=group_message)
 
 
 def progress(memberships):
@@ -60,14 +60,30 @@ def calendar_context(classrooms, query):
         by_student[m.student_id].append(m)
     registrations = list(StudentRegistration.objects.filter(student_id__in=by_student, profile__is_active=True,
         profile__olympiad__is_active=True).select_related('profile__olympiad'))
+    scope = query.get('scope', 'students')
+    if scope not in ('students', 'registered', 'catalog'):
+        scope = 'students'
+    planned = defaultdict(set)
+    if scope == 'students':
+        for workspace in Workspace.objects.filter(user_id__in=by_student):
+            state = workspace.state
+            keys = set(state.get('favorites', [])) | {t.get('source') for t in state.get('tasks', [])}
+            for key in keys:
+                if key:
+                    planned[key].add(workspace.user_id)
+    olympiads = list(Olympiad.objects.filter(is_active=True))
+    selected_ids = {r.profile.olympiad_id for r in registrations}
+    selected_ids.update(o.pk for o in olympiads if o.plan_key in planned)
+    if scope == 'catalog':
+        selected_ids = {o.pk for o in olympiads}
     events = list(OlympiadEvent.objects.filter(is_active=True, kind='stage',
-        olympiad_id__in={r.profile.olympiad_id for r in registrations}).select_related('olympiad'))
+        olympiad_id__in=selected_ids).filter(Q(profile__isnull=True) | Q(profile__is_active=True)).select_related('olympiad'))
     grouped = {}
     for event in events:
         start, end = event.starts_on or event.ends_on, event.ends_on or event.starts_on
         if not start or end < first_day or start > last_day or end < start:
             continue
-        pupils = {}
+        pupil_status = {pk: False for pk in planned.get(event.olympiad.plan_key, [])}
         for reg in registrations:
             if reg.profile.olympiad_id != event.olympiad_id:
                 continue
@@ -75,10 +91,16 @@ def calendar_context(classrooms, query):
                 continue
             if not event.profile_id and event.profile_name and event.profile_name.casefold() != reg.profile.name.casefold():
                 continue
-            for member in by_student[reg.student_id]:
-                pupils[reg.student_id] = {'id': reg.student_id, 'name': member.student.get_full_name() or member.student.username,
-                    'class_name': member.classroom.name, 'url': reverse('classrooms:student_profile', args=[member.pk])}
-        if not pupils:
+            pupil_status[reg.student_id] = True
+        pupils = {}
+        for student_id, registered in pupil_status.items():
+            members = by_student[student_id]
+            member = members[0]
+            pupils[student_id] = {'id': student_id, 'name': member.student.get_full_name() or member.student.username,
+                'class_name': ', '.join(m.classroom.name for m in members),
+                'url': reverse('classrooms:student_profile', args=[member.pk]),
+                'registered': registered}
+        if not pupils and scope != 'catalog':
             continue
         # The source can repeat one tour for several profiles and students.
         key = (event.olympiad_id, event.source_url, start, end)
@@ -87,7 +109,9 @@ def calendar_context(classrooms, query):
             'url': reverse('olympiad_detail', args=[event.olympiad_id]),
             'format': event.get_participation_format_display(), 'venue': event.venue,
             'incomplete': not event.starts_on or not event.ends_on})
-        item['students'].update(pupils)
+        for pk, pupil in pupils.items():
+            if pk not in item['students'] or pupil['registered']:
+                item['students'][pk] = pupil
         if event.profile_name:
             item['profiles'].add(event.profile_name)
     entries = sorted(grouped.values(), key=lambda e: (e['start'], e['olympiad'], e['id']))
@@ -107,9 +131,14 @@ def calendar_context(classrooms, query):
         payload[key] = {'events': public, 'conflicts': overlapping}
         label = '; '.join(e['olympiad'] + ': ' + e['name'] for e in active)
         days.append({'date': day, 'key': key, 'current': day.month == month, 'today': day == today,
-                     'count': len(active), 'conflict': bool(conflicts), 'label': label})
+                     'count': len(active), 'conflict': bool(conflicts), 'label': label,
+                     'preview': active[0]['olympiad'] if active else ''})
+    dated_days = [d['key'] for d in days if d['current'] and d['count']]
+    initial = next((day for day in dated_days if day >= today.isoformat()), None)
+    initial = initial or (dated_days[0] if dated_days else first.isoformat())
+    suffix = '&scope=' + scope
     return {'calendar_days': days, 'calendar_data': payload, 'calendar_caption': f'{MONTHS[month - 1].capitalize()} {year}',
-            'previous_month': f'year={previous.year}&month={previous.month}',
-            'next_month': f'year={following.year}&month={following.month}',
-            'calendar_initial': today.isoformat() if today.year == year and today.month == month else first.isoformat(),
+            'previous_month': f'year={previous.year}&month={previous.month}' + suffix,
+            'next_month': f'year={following.year}&month={following.month}' + suffix,
+            'calendar_initial': initial, 'calendar_scope': scope, 'calendar_year': year, 'calendar_month': month,
             'calendar_has_entries': bool(entries)}

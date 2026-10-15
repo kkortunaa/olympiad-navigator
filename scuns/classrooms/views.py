@@ -18,7 +18,7 @@ from olympiads.models import OlympiadProfile
 from planner.models import Workspace
 from planner.state import MAX_ACTIVITY
 from .forms import AnswerForm, AssignmentForm, ClassroomForm, InviteForm, JoinForm, MessageForm, VariantForm
-from .models import (Assignment, AssignmentReceipt, ChatMessage, Classroom, Invitation, Membership,
+from .models import (Assignment, AssignmentReceipt, ChatMessage, ClassChatMessage, Classroom, Invitation, Membership,
                      SchoolNotice, StudentRegistration, VariantDraft, invite_code)
 from .services import calendar_context, notice, progress
 
@@ -52,6 +52,14 @@ def chat_membership(request, pk):
 
 def member_url(member):
     return reverse('classrooms:student_profile', args=[member.pk])
+
+
+def chat_classroom(request, pk):
+    cls = get_object_or_404(Classroom.objects.select_related('teacher'), pk=pk)
+    if not (cls.teacher_id == request.user.pk or
+            cls.memberships.filter(student=request.user, is_active=True).exists()):
+        raise PermissionDenied()
+    return cls
 
 
 def notice_queryset(user):
@@ -373,6 +381,66 @@ def send_message(sender, member, text):
     return item
 
 
+@transaction.atomic
+def send_group_message(sender, cls, text):
+    item = ClassChatMessage.objects.create(classroom=cls, sender=sender, text=text)
+    recipients = {m.student_id: (m.student, m) for m in
+                  cls.memberships.filter(is_active=True).select_related('student')}
+    recipients[cls.teacher_id] = (cls.teacher, None)
+    for user_id, (recipient, member) in recipients.items():
+        if user_id != sender.pk:
+            notice(recipient, cls, f'Чат класса · {cls.name}',
+                   f'{sender.get_full_name() or sender.username}: {text[:300]}',
+                   reverse('classrooms:group_chat', args=[cls.pk]), 'group_message', member, group_message=item)
+    return item
+
+
+@never_cache
+@require_http_methods(['GET', 'POST'])
+def group_chat(request, pk):
+    if not request.user.is_authenticated:
+        return redirect_to_login(request.get_full_path())
+    cls = chat_classroom(request, pk)
+    form = MessageForm(request.POST if request.method == 'POST' else None)
+    if request.method == 'POST' and form.is_valid():
+        if message_allowed(request.user):
+            send_group_message(request.user, cls, form.cleaned_data['text'])
+            return redirect('classrooms:group_chat', pk=pk)
+        form.add_error(None, 'Слишком много сообщений. Подождите минуту.')
+    items = cls.chat_messages.select_related('sender')
+    before = request.GET.get('before', '')
+    if before.isdigit() and len(before) <= 18:
+        items = items.filter(pk__lt=int(before))
+    items = list(items.order_by('-pk')[:100])[::-1]
+    return render(request, 'classrooms/chat.html', {'group_chat': True, 'classroom': cls,
+        'chat_messages': items, 'older': items[0].pk if items and cls.chat_messages.filter(pk__lt=items[0].pk).exists() else None,
+        'form': form, 'page_title': f'Чат класса · {cls.name}', 'active_page': 'classes',
+        'participant_count': cls.memberships.filter(is_active=True).count() + 1})
+
+
+@never_cache
+@require_http_methods(['GET', 'POST'])
+def group_chat_api(request, pk):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Войдите в аккаунт.'}, status=401)
+    cls = chat_classroom(request, pk)
+    if request.method == 'POST':
+        form = MessageForm(request.POST)
+        if not form.is_valid():
+            return JsonResponse({'error': 'Напишите сообщение от 1 до 4000 символов.'}, status=400)
+        if not message_allowed(request.user):
+            return JsonResponse({'error': 'Слишком много сообщений. Подождите минуту.'}, status=429)
+        send_group_message(request.user, cls, form.cleaned_data['text'])
+        return JsonResponse({'ok': True})
+    after = request.GET.get('after', '0')
+    if not after.isdigit() or len(after) > 18:
+        return JsonResponse({'error': 'Некорректный номер сообщения.'}, status=400)
+    rows = list(cls.chat_messages.filter(pk__gt=int(after)).select_related('sender').order_by('pk')[:101])
+    return JsonResponse({'messages': [{'id': m.pk, 'name': m.sender.get_full_name() or m.sender.username,
+        'text': m.text, 'own': m.sender_id == request.user.pk, 'time': timezone.localtime(m.created_at).strftime('%d.%m %H:%M')}
+        for m in rows[:100]], 'has_more': len(rows) > 100})
+
+
 def message_allowed(user):
     key = f'chat:{user.pk}'
     if cache.add(key, 1, 60):
@@ -440,7 +508,15 @@ def notice_read(request):
         return JsonResponse({'error': 'Войдите в аккаунт.'}, status=401)
     qs = notice_queryset(request.user).filter(read_at__isnull=True)
     member_id, notice_id = request.POST.get('membership'), request.POST.get('notice')
-    if member_id and member_id.isdigit():
+    class_id = request.POST.get('classroom', '')
+    if class_id.isdigit() and len(class_id) <= 18:
+        cls = chat_classroom(request, int(class_id))
+        through = request.POST.get('through', '')
+        if not through.isdigit() or len(through) > 18:
+            return JsonResponse({'error': 'Укажите прочитанное сообщение.'}, status=400)
+        latest = get_object_or_404(ClassChatMessage, pk=int(through), classroom=cls)
+        qs = qs.filter(classroom=cls, kind='group_message', group_message_id__lte=latest.pk)
+    elif member_id and member_id.isdigit():
         chat_membership(request, int(member_id))
         qs = qs.filter(membership_id=member_id, kind='message')
     elif notice_id and notice_id.isdigit():

@@ -94,6 +94,7 @@ class SchoolNotice(models.Model):
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='school_notices')
     classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE)
     membership = models.ForeignKey(Membership, null=True, blank=True, on_delete=models.CASCADE)
+    group_message = models.ForeignKey('ClassChatMessage', null=True, blank=True, on_delete=models.CASCADE)
     title = models.CharField(max_length=180)
     text = models.CharField(max_length=500, blank=True)
     url = models.CharField(max_length=250)
@@ -104,6 +105,16 @@ class SchoolNotice(models.Model):
     class Meta:
         ordering = ['-created_at', '-pk']
         indexes = [models.Index(fields=['recipient', 'read_at'])]
+
+
+class ClassChatMessage(models.Model):
+    classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE, related_name='chat_messages')
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    text = models.TextField('Сообщение', max_length=4000)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['pk']
 
 
 class VariantDraft(models.Model):

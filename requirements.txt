@@ -1,5 +1,5 @@
-Django==3.2.16
-django-bootstrap5==22.2
-Pillow==9.4.0
-selenium>=4.20,<5
-beautifulsoup4>=4.12,<5
+Django==5.2.18
+django-bootstrap5==25.3
+Pillow==12.3.0
+selenium==4.51.0
+beautifulsoup4==4.15.0
