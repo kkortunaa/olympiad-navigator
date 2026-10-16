@@ -1,0 +1,9 @@
+.wordmark-brand{gap:0}
+.wordmark{display:flex;align-items:baseline;gap:0;font-size:19px;line-height:1;font-weight:800;letter-spacing:-.75px;white-space:nowrap}
+.wordmark span:first-child{color:#F1EEF8}
+.wordmark span:last-child{color:#BDA7F2}
+.wordmark-brand small{display:block;margin-top:4px;font-size:10px;font-weight:400;letter-spacing:.1px}
+html[data-theme=light] .wordmark span:first-child{color:#302742}
+html[data-theme=light] .wordmark span:last-child{color:#7451A4}
+@media(max-width:600px){.wordmark{font-size:17px}.wordmark-brand small{font-size:9px}}
+@media(max-width:360px){.wordmark{font-size:16px}.wordmark-brand small{font-size:8px}}

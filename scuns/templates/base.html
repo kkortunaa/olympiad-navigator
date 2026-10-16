@@ -4,12 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}{{ page_title|default:"Главная" }} — Олимпиадный навигатор{% endblock %}</title>
+    <title>{% block title %}{{ page_title|default:"Главная" }} — ОлимпТрек{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'navigator/site.css' %}?v=20261013-2">
     <link id="dark-theme" rel="stylesheet" href="{% static 'navigator/midnight.css' %}?v=20261015">
     <script>try { if(localStorage.getItem('navigator-theme')==='light'){document.documentElement.dataset.theme='light';document.getElementById('dark-theme').disabled=true;} } catch(e) {}</script>
     <link rel="stylesheet" href="{% static 'navigator/light.css' %}?v=20261015">
     <link rel="stylesheet" href="{% static 'navigator/school.css' %}?v=20261015">
+    <link rel="stylesheet" href="{% static 'navigator/brand.css' %}?v=20261016">
     <script src="{% static 'navigator/theme.js' %}?v=20261015" defer></script>
     <script src="{% static 'navigator/activity-data.js' %}?v=20261013-2" defer></script>
     <script src="{% static 'navigator/site.js' %}?v=20261015" defer></script>
