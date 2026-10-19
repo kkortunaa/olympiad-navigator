@@ -5,6 +5,8 @@ from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
+from olympiads.links import corrected_url
+
 OFFICIAL_CATALOG = 'https://rsr-olymp.ru/'
 INDEX_URL = 'https://olimpiada.ru/article/1266'
 SOURCE_HOST = 'https://olimpiada.ru'
@@ -49,7 +51,7 @@ def safe_url(raw, base=SOURCE_HOST):
     parsed = urlparse(url)
     if parsed.scheme not in ('http', 'https') or not parsed.netloc or parsed.username or parsed.password:
         return ''
-    return url
+    return corrected_url(url)
 
 
 def parse_catalog(html, season):
