@@ -1,5 +1,12 @@
 from django.contrib import admin
-from .models import Olympiad, OlympiadProfile, OlympiadEvent, ScrapeRun
+from .models import CatalogLinkCheck, Olympiad, OlympiadProfile, OlympiadEvent, ScrapeRun
+
+
+@admin.register(CatalogLinkCheck)
+class CatalogLinkCheckAdmin(admin.ModelAdmin):
+    list_display = ['url', 'outcome', 'status_code', 'checked_at']
+    list_filter = ['outcome']
+    search_fields = ['url']
 
 
 class ProfileInline(admin.TabularInline):

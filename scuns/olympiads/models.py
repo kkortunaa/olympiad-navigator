@@ -2,6 +2,14 @@ from django.db import models
 from django.utils import timezone
 
 
+class CatalogLinkCheck(models.Model):
+    url = models.URLField(max_length=1000, unique=True)
+    outcome = models.CharField(max_length=40)
+    status_code = models.PositiveSmallIntegerField(null=True, blank=True)
+    checked_at = models.DateTimeField(default=timezone.now)
+    error = models.TextField(blank=True)
+
+
 class Olympiad(models.Model):
     season = models.CharField('Учебный год', max_length=9, db_index=True)
     catalog_number = models.PositiveSmallIntegerField('Номер в перечне')

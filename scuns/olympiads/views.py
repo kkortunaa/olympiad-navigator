@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from .models import Olympiad, ScrapeRun
 from .registration import registration_periods, registration_estimates
+from .link_display import prepare_catalog_links
 
 
 def filter_metadata(olympiads):
@@ -32,6 +33,7 @@ def catalog_context():
     start = today.year if today.month >= 8 else today.year - 1
     season = '{}/{}'.format(start, start + 1)
     olympiads = list(Olympiad.objects.filter(season=season, is_active=True).prefetch_related('events', 'profiles'))
+    prepare_catalog_links(olympiads)
     run = ScrapeRun.objects.filter(season=season, finished_at__isnull=False).first()
     filters = filter_metadata(olympiads)
     return {'catalog': olympiads, 'catalog_season': season, 'catalog_run': run,
@@ -47,6 +49,7 @@ def catalog_context():
 
 def detail(request, pk):
     olympiad = get_object_or_404(Olympiad.objects.prefetch_related('profiles', 'events'), pk=pk)
+    prepare_catalog_links([olympiad])
     return render(request, 'olympiads/detail.html', {'olympiad': olympiad,
         'active_page': 'olympiads', 'page_title': olympiad.name,
         'schedule': sorted([event for event in olympiad.events.all() if event.is_active],
@@ -62,11 +65,13 @@ def catalog_api(request):
         rows.append({'id': item.pk, 'key': item.plan_key, 'name': item.name, 'season': item.season,
             'catalog_number': item.catalog_number, 'official_url': item.official_url,
             'registration_url': item.registration_url or None, 'source_url': item.source_url,
+            'registration_action': item.registration_action,
             'last_success_at': item.last_success_at,
             'registration_estimates': registration_estimates(item),
             'profiles': [{'id': profile.pk, 'name': profile.name, 'level': profile.level, 'subjects': profile.subjects,
                 'tasks_url': profile.tasks_url or None, 'tasks_checked_at': profile.tasks_checked_at,
-                'registration_url': profile.registration_url or None} for profile in item.profiles.all() if profile.is_active],
+                'registration_url': profile.registration_url or None,
+                'registration_action': profile.registration_action} for profile in item.profiles.all() if profile.is_active],
             'events': [{'name': event.name, 'kind': event.kind, 'profile': event.profile_name,
                 'starts_on': event.starts_on, 'ends_on': event.ends_on, 'dates_raw': event.dates_raw,
                 'registration_url': event.registration_url or None, 'source_url': event.source_url,

@@ -52,6 +52,87 @@ class CatalogLinkTests(SimpleTestCase):
             urlopen.side_effect = HTTPError('https://example.com/', status, '', {}, None)
             self.assertEqual(check_link('https://example.com/', 10)['outcome'], expected)
 
+    @patch('olympiads.management.commands.audit_catalog_links.urlopen')
+    def test_service_unavailable_page_with_http_200_is_not_a_working_form(self, urlopen):
+        response = MagicMock(status=200)
+        response.read.return_value = '<title>Сервисы временно недоступны</title>'.encode()
+        response.geturl.return_value = 'https://my.ntcontest.ru/'
+        urlopen.return_value.__enter__.return_value = response
+        self.assertEqual(check_link('https://my.ntcontest.ru/', 10)['outcome'], 'temporarily_unavailable')
+
+    def test_registration_discovery_rejects_admin_pages(self):
+        from bs4 import BeautifulSoup
+        from .services.parsing import registration_link
+        soup = BeautifulSoup('<a href="https://example.com/admin/content/profiles">Регистрация</a>', 'html.parser')
+        self.assertEqual(registration_link(soup, 'https://example.com/'), '')
+
+
+class RegistrationFallbackTests(TestCase):
+    def setUp(self):
+        from .models import Olympiad, OlympiadProfile, CatalogLinkCheck, OlympiadEvent
+        from django.utils import timezone
+        self.olympiad = Olympiad.objects.create(season='2026/2027', catalog_number=1,
+            name='Тестовая олимпиада', official_url='https://organizer.example/',
+            source_url='https://olimpiada.ru/activity/1', catalog_url='https://rsr-olymp.ru/',
+            registration_url='https://forms.example/')
+        self.profile = OlympiadProfile.objects.create(olympiad=self.olympiad, name='математика',
+            level=1, official_url=self.olympiad.official_url, registration_url=self.olympiad.registration_url)
+        OlympiadEvent.objects.create(olympiad=self.olympiad, profile=self.profile, name='Регистрация',
+            kind='registration', registration_url=self.olympiad.registration_url,
+            source_url='https://olimpiada.ru/activity/1/events/1', last_checked_at=timezone.now())
+        self.check = CatalogLinkCheck.objects.create(url=self.olympiad.registration_url,
+                                                    outcome='connection_error')
+
+    def test_failed_form_is_removed_from_card_detail_profiles_events_and_api(self):
+        from datetime import date
+        with patch('olympiads.views.timezone.localdate', return_value=date(2026, 10, 19)):
+            for path in ('/olympiads/', f'/olympiads/{self.olympiad.pk}/'):
+                response = self.client.get(path)
+                self.assertNotContains(response, 'href="https://forms.example/"')
+                self.assertContains(response, 'href="https://organizer.example/"')
+                self.assertContains(response, 'Прямая форма')
+            data = self.client.get('/api/olympiads/').json()['olympiads'][0]
+        self.assertIsNone(data['registration_url'])
+        self.assertIsNone(data['profiles'][0]['registration_url'])
+        self.assertIsNone(data['events'][0]['registration_url'])
+        self.olympiad.refresh_from_db()
+        self.assertEqual(self.olympiad.registration_url, 'https://forms.example/')
+
+    def test_failed_organizer_uses_source_without_labelling_it_as_direct_registration(self):
+        from .models import CatalogLinkCheck
+        CatalogLinkCheck.objects.create(url=self.olympiad.official_url, outcome='not_found')
+        response = self.client.get(f'/olympiads/{self.olympiad.pk}/')
+        self.assertContains(response, 'Условия участия и источники')
+        self.assertNotContains(response, 'href="https://organizer.example/"')
+
+    def test_successful_recheck_restores_original_form(self):
+        self.check.outcome = 'reachable'
+        self.check.save()
+        response = self.client.get(f'/olympiads/{self.olympiad.pk}/')
+        self.assertContains(response, 'href="https://forms.example/"')
+
+    def test_bot_restriction_does_not_hide_a_valid_form(self):
+        self.check.outcome = 'restricted'
+        self.check.save()
+        response = self.client.get(f'/olympiads/{self.olympiad.pk}/')
+        self.assertContains(response, 'href="https://forms.example/"')
+
+    @patch('olympiads.management.commands.audit_catalog_links.check_link')
+    def test_audit_saves_recovery_without_changing_original_urls(self, check_link):
+        from django.core.management import call_command
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from io import StringIO
+        check_link.side_effect = lambda url, timeout: {
+            'url': url, 'outcome': 'reachable', 'status': 200, 'final_url': url}
+        with TemporaryDirectory() as folder:
+            call_command('audit_catalog_links', report=str(Path(folder) / 'audit.json'),
+                         save_checks=True, workers=1, stdout=StringIO())
+        self.check.refresh_from_db()
+        self.assertEqual(self.check.outcome, 'reachable')
+        self.olympiad.refresh_from_db()
+        self.assertEqual(self.olympiad.registration_url, 'https://forms.example/')
+
 
 class YumshRegistrationMigrationTests(TestCase):
     def test_existing_records_and_rendered_button_use_organizer_fallback(self):

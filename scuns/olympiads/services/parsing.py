@@ -166,6 +166,8 @@ def registration_link(soup, base, allowed_hosts=None, generic=False):
             continue
         label = text(anchor).lower()
         path = urlparse(url).path.lower()
+        if re.match(r'^/(admin|administrator)(/|$)', path):
+            continue
         if any(token in path for token in ('.pdf', '.doc', '.jpg')) or 'mailto:' in anchor.get('href', ''):
             continue
         if re.search(r'/(news|article|media/news|instr-reg)(/|$)', path) or (re.search(r'/activity/', path) and urlparse(url).hostname == 'olimpiada.ru'):

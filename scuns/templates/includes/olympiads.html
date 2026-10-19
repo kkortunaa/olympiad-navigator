@@ -23,7 +23,7 @@
                 <a class="text-link" href="{% url 'olympiad_detail' olympiad.pk %}">Даты туров и регистрации →</a>
                 <p><a class="text-link" href="{% url 'olympiad_detail' olympiad.pk %}#profiles">Профили и задания →</a></p>
             </div>
-            {% if olympiad.registration_url %}<a class="button primary" href="{{ olympiad.registration_url }}" target="_blank" rel="noopener noreferrer">Зарегистрироваться ↗</a>{% elif olympiad.official_url %}<a class="button" href="{{ olympiad.official_url }}" target="_blank" rel="noopener noreferrer">Регистрация у организатора ↗</a>{% endif %}
+            {% if olympiad.registration_unavailable %}<p class="muted">Прямая форма сейчас недоступна. Условия участия — по ссылке ниже.</p>{% endif %}{% if olympiad.registration_action.url %}<a class="button {% if olympiad.registration_url %}primary{% endif %}" href="{{ olympiad.registration_action.url }}" target="_blank" rel="noopener noreferrer">{{ olympiad.registration_action.label }}</a>{% endif %}
             {% if not user.is_teacher %}<button class="plan-button" type="button" data-olympiad="{{ olympiad.plan_key }}" aria-pressed="false">Задача подготовки</button>{% endif %}
         </article>
     {% empty %}<div class="panel"><h3>Каталог пока пуст</h3><p>Олимпиады появятся после первого обновления данных.</p></div>{% endfor %}
