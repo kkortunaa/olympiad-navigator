@@ -1161,7 +1161,7 @@
       "official_url": "https://yumsh.ru/cms/yumsh-olymp",
       "source_url": "https://olimpiada.ru/activity/66",
       "catalog_url": "https://rsr-olymp.ru/",
-      "registration_url": "https://form.centraluniversity.ru/youth_math_olympiad/",
+      "registration_url": "",
       "subjects": [
         "математика"
       ],
@@ -5189,7 +5189,7 @@
       "level": 2,
       "official_url": "https://yumsh.ru/cms/yumsh-olymp",
       "source_url": "https://olimpiada.ru/activity/66",
-      "registration_url": "https://form.centraluniversity.ru/youth_math_olympiad/",
+      "registration_url": "",
       "is_active": true,
       "tasks_url": "https://olimpiada.ru/activity/66/tasks",
       "tasks_checked_at": "2026-10-12T06:26:38.752Z"

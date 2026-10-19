@@ -5,6 +5,11 @@ forms must not be silently redirected to a generic organizer homepage.
 """
 
 VERIFIED_URL_REPLACEMENTS = {
+    # This obsolete form is no longer advertised by the current organizer.
+    # An empty direct-registration URL activates the explicitly labelled
+    # organizer-site fallback instead of mislabelling an information page.
+    'https://form.centraluniversity.ru/youth_math_olympiad': '',
+    'http://form.centraluniversity.ru/youth_math_olympiad': '',
     'http://yumsh.spbu.ru': 'https://yumsh.ru/cms/yumsh-olymp',
     'https://yumsh.spbu.ru': 'https://yumsh.ru/cms/yumsh-olymp',
     'http://www.yumsh.spbu.ru': 'https://yumsh.ru/cms/yumsh-olymp',
