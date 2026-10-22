@@ -17,9 +17,9 @@ from django.views.decorators.cache import never_cache
 from olympiads.models import OlympiadProfile
 from planner.models import Workspace
 from planner.state import MAX_ACTIVITY
-from .forms import AnswerForm, AssignmentForm, ClassroomForm, InviteForm, JoinForm, MessageForm, VariantForm
+from .forms import AnswerForm, AssignmentForm, ClassroomForm, InviteForm, JoinForm, MessageForm
 from .models import (Assignment, AssignmentReceipt, ChatMessage, ClassChatMessage, Classroom, Invitation, Membership,
-                     SchoolNotice, StudentRegistration, VariantDraft, invite_code)
+                     SchoolNotice, StudentRegistration, invite_code)
 from .services import calendar_context, notice, progress
 
 
@@ -87,6 +87,7 @@ def teacher_class(request, pk):
     return render(request, 'classrooms/teacher_class.html', {'classroom': cls,
         'members': progress(cls.memberships.filter(is_active=True)), 'invitations': cls.invitations.filter(status='pending').select_related('student'),
         'invite_form': InviteForm(), 'assignment_form': AssignmentForm(classroom=cls), 'assignments': assignments,
+        'practice_deliveries': cls.practice_assignments.all(),
         'page_title': cls.name, 'active_page': 'classes'})
 
 
@@ -188,6 +189,7 @@ def student_class(request, pk):
     cls = member.classroom
     return render(request, 'classrooms/student_class.html', {'classroom': cls, 'membership': member,
         'members': progress(cls.memberships.filter(is_active=True)),
+        'practice_receipts': member.practice_works.select_related('assignment'),
         'receipts': member.assignments.select_related('assignment'), 'page_title': cls.name, 'active_page': 'classes'})
 
 
@@ -198,6 +200,7 @@ def student_profile(request, pk):
     return render(request, 'classrooms/student_profile.html', {'membership': progress(Membership.objects.filter(pk=member.pk))[0],
         'registrations': member.student.olympiad_registrations.select_related('profile__olympiad'),
         'receipts': member.assignments.select_related('assignment'),
+        'practice_receipts': member.practice_works.select_related('assignment'),
         'page_title': member.student.get_full_name() or member.student.username, 'active_page': 'classes'})
 
 
@@ -321,32 +324,14 @@ def teacher_calendar(request):
 
 @role_required('teacher')
 def variants(request):
-    classes = request.user.teaching_classes.all()
-    if request.method == 'POST':
-        cls = owned_class(request, request.POST.get('classroom') if str(request.POST.get('classroom', '')).isdigit() else 0)
-        form = VariantForm(request.POST)
-        if form.is_valid():
-            draft = form.save(commit=False)
-            draft.classroom = cls
-            draft.save()
-            return redirect('classrooms:variant_edit', pk=draft.pk)
-    else:
-        form = VariantForm()
-    return render(request, 'classrooms/variants.html', {'classes': classes, 'form': form,
-        'drafts': VariantDraft.objects.filter(classroom__teacher=request.user).select_related('classroom'),
-        'page_title': 'Варианты', 'active_page': 'variants'})
+    from practice.views import papers
+    return papers(request)
 
 
 @role_required('teacher')
 def variant_edit(request, pk):
-    draft = get_object_or_404(VariantDraft, pk=pk, classroom__teacher=request.user)
-    form = VariantForm(request.POST if request.method == 'POST' else None, instance=draft)
-    if request.method == 'POST' and form.is_valid():
-        form.save()
-        messages.success(request, 'Черновик варианта сохранён.')
-        return redirect('classrooms:variant_edit', pk=pk)
-    return render(request, 'classrooms/variant_edit.html', {'draft': draft, 'form': form,
-        'page_title': draft.title, 'active_page': 'variants'})
+    from practice.views import paper_edit
+    return paper_edit(request, pk)
 
 
 @never_cache

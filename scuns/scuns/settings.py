@@ -45,6 +45,7 @@ AUTH_USER_MODEL = "users.Myuser"
 # Application definition
 
 INSTALLED_APPS = [
+    'practice.apps.PracticeConfig',
     'classrooms.apps.ClassroomsConfig',
     'planner.apps.PlannerConfig',
     'django.contrib.admin',
@@ -112,6 +113,7 @@ DATABASES = {
 }
 
 MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_URL = '/media/'
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
 
@@ -147,6 +149,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
@@ -160,3 +163,22 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
+
+# Optional Groq free-plan integration. Secrets are read only on the server.
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '').strip()
+PRACTICE_AI_MODEL = os.environ.get('PRACTICE_AI_MODEL', 'openai/gpt-oss-20b')
+
+
+def practice_env_int(name, default, minimum, maximum):
+    try:
+        value = int(os.environ.get(name, str(default)))
+    except ValueError:
+        raise ImproperlyConfigured(f'{name} должен быть целым числом.')
+    return max(minimum, min(maximum, value))
+
+
+PRACTICE_AI_USER_DAILY_LIMIT = practice_env_int('PRACTICE_AI_USER_DAILY_LIMIT', 10, 0, 100)
+PRACTICE_AI_GLOBAL_DAILY_LIMIT = practice_env_int('PRACTICE_AI_GLOBAL_DAILY_LIMIT', 50, 0, 1000)
+PRACTICE_AI_COOLDOWN = practice_env_int('PRACTICE_AI_COOLDOWN', 15, 5, 3600)
+PRACTICE_AI_TIMEOUT = practice_env_int('PRACTICE_AI_TIMEOUT', 20, 3, 30)
+PRACTICE_AI_MAX_TOKENS = practice_env_int('PRACTICE_AI_MAX_TOKENS', 1800, 300, 3000)

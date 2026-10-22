@@ -225,3 +225,8 @@ __marimo__/
 
 # Portable launch environment
 .venv-app/
+
+# Teacher-uploaded conditions and local API configuration
+/scuns/media/
+/scuns/staticfiles/
+.env.practice

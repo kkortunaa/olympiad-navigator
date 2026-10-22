@@ -12,6 +12,7 @@
             {% else %}
             <a href="{% url 'homepage:homepage' %}" {% if active_page == 'home' %}aria-current="page"{% endif %}>Главная</a>
             {% if user.is_authenticated %}<a href="{% url 'classrooms:student_home' %}" {% if active_page == 'classes' %}aria-current="page"{% endif %}>Мой класс</a>{% endif %}
+            {% if user.is_authenticated %}<a href="{% url 'practice:student_works' %}" {% if active_page == 'practice' %}aria-current="page"{% endif %}>Задания</a>{% endif %}
             {% endif %}
             <a href="{% url 'homepage:olympiads' %}" {% if active_page == 'olympiads' %}aria-current="page"{% endif %}>Олимпиады</a>
             {% if not user.is_teacher %}<a href="{% url 'homepage:study' %}" {% if active_page == 'study' %}aria-current="page"{% endif %}>Подготовка</a>{% endif %}

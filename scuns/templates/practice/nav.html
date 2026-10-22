@@ -1,0 +1,4 @@
+<nav class="school-tabs" aria-label="Задания и варианты">
+{% if user.is_teacher %}<a href="{% url 'classrooms:variants' %}">Мои варианты</a><a href="{% url 'practice:questions' %}">Банк заданий</a><a href="{% url 'practice:question_new' %}">Создать задание</a>
+{% else %}<a href="{% url 'practice:student_works' %}">Мои варианты</a><a href="{% url 'practice:statistics' %}">Мои ошибки и статистика</a>{% endif %}
+</nav>
